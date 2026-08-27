@@ -36,26 +36,42 @@
 
   (doc step-custom! "advances simulation using a custom sub-step size.")
   (defn step-custom! [rb dt sub-step]
-    (Integrator.step-custom! (RigidBody.transform rb)
-                             (RigidBody.body rb)
-                             dt
-                             sub-step))
+    (let [t (RigidBody.transform rb)
+          b (RigidBody.body rb)]
+      (do
+        (Integrator.step-custom! t b dt sub-step)
+        (RigidBody.set-transform! rb @t)
+        (RigidBody.set-body! rb @b))))
 
   (doc apply-force! "proxy to apply a continuous force to the underlying body.")
-  (defn apply-force! [rb f] (Body.apply-force! (RigidBody.body rb) f))
+  (defn apply-force! [rb f]
+    (let [b (RigidBody.body rb)]
+      (do
+        (Body.apply-force! b f)
+        (RigidBody.set-body! rb @b))))
 
   (doc apply-torque!
     "proxy to apply a continuous torque to the underlying body.")
-  (defn apply-torque! [rb t] (Body.apply-torque! (RigidBody.body rb) t))
+  (defn apply-torque! [rb t]
+    (let [b (RigidBody.body rb)]
+      (do
+        (Body.apply-torque! b t)
+        (RigidBody.set-body! rb @b))))
 
   (doc apply-impulse!
     "proxy to apply an instantaneous impulse to the underlying body.")
   (defn apply-impulse! [rb impulse]
-    (Body.apply-impulse! (RigidBody.body rb) impulse))
+    (let [b (RigidBody.body rb)]
+      (do
+        (Body.apply-impulse! b impulse)
+        (RigidBody.set-body! rb @b))))
 
   (doc apply-angular-impulse! "proxy to apply an instantaneous angular impulse.")
   (defn apply-angular-impulse! [rb impulse]
-    (Body.apply-angular-impulse! (RigidBody.body rb) impulse))
+    (let [b (RigidBody.body rb)]
+      (do
+        (Body.apply-angular-impulse! b impulse)
+        (RigidBody.set-body! rb @b))))
 
   (doc position "returns a reference to the transform's position.")
   (defn position [rb] (Transform.position (RigidBody.transform rb)))
