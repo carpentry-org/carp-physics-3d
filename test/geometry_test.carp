@@ -1,0 +1,63 @@
+(load "Test.carp")
+(use Test)
+(load "geometry.carp")
+(use Geometry)
+
+(deftest geometry-test
+  (let [state (ref (Test.State.init 0 0))
+        ;; Sphere-Sphere Contact
+        s1 (Sphere.init (Vector3.init 0.0 0.0 0.0) 1.0)
+        s2 (Sphere.init (Vector3.init 1.5 0.0 0.0) 1.0)
+        s3 (Sphere.init (Vector3.init 2.5 0.0 0.0) 1.0)
+        h-ss1 (Sphere.collide-sphere &s1 &s2)
+        t1 (assert-true state (Maybe.just? &h-ss1) "Sphere-Sphere intersect")
+        t2 (assert-true &t1
+          (let [hit (Maybe.unsafe-from h-ss1)]
+            (< (abs (- @(Contact.depth &hit) 0.5)) Geometry.EPSILON))
+          "Sphere-Sphere penetration depth correct")
+        t3 (assert-true &t2
+          (let [res (Sphere.collide-sphere &s1 &s3)] (Maybe.nothing? &res))
+          "Sphere-Sphere non-intersect")
+        ;; AABB-AABB Contact
+        a1 (AABB.init (Vector3.init 0.0 0.0 0.0) (Vector3.init 1.0 1.0 1.0))
+        a2 (AABB.init (Vector3.init 0.5 0.5 0.5) (Vector3.init 1.5 1.5 1.5))
+        a3 (AABB.init (Vector3.init 1.5 1.5 1.5) (Vector3.init 2.5 2.5 2.5))
+        h-aa1 (AABB.collide-aabb &a1 &a2)
+        t4 (assert-true &t3 (Maybe.just? &h-aa1) "AABB-AABB intersect")
+        t5 (assert-true &t4
+          (let [hit (Maybe.unsafe-from h-aa1)]
+            (< (abs (- @(Contact.depth &hit) 0.5)) Geometry.EPSILON))
+          "AABB-AABB penetration depth correct")
+        t6 (assert-true &t5
+          (let [res (AABB.collide-aabb &a1 &a3)] (Maybe.nothing? &res))
+          "AABB-AABB non-intersect")
+        ;; Ray-Sphere Hit
+        r1 (create-ray &(Vector3.init -5.0 0.0 0.0) &(Vector3.init 1.0 0.0 0.0))
+        h-rs1 (Ray.intersect-sphere &r1 &s1)
+        t7 (assert-true &t6 (Maybe.just? &h-rs1) "Ray-Sphere hit")
+        t8 (assert-true &t7
+          (let [hit (Maybe.unsafe-from h-rs1)]
+            (and
+              (< (abs (- @(RayHit.t &hit) 4.0)) Geometry.EPSILON)
+              (<
+                (Vector3.dist (RayHit.normal &hit) &(Vector3.init -1.0 0.0 0.0))
+                Geometry.EPSILON)))
+          "Ray-Sphere hit distance and normal correct")
+        ;; Sphere-AABB Contact
+        h-sa1 (Sphere.collide-aabb &s1 &a1)
+        t9 (assert-true &t8 (Maybe.just? &h-sa1) "Sphere-AABB intersect")
+        t10 (assert-true &t9
+          (let [res (Sphere.collide-aabb &s3 &a1)] (Maybe.nothing? &res))
+          "Sphere-AABB non-intersect")
+        ;; Segment tests
+        seg1 (Segment.init (Vector3.init -5.0 0.0 0.0)
+                           (Vector3.init -3.0 0.0 0.0))
+        seg2 (Segment.init (Vector3.init -5.0 0.0 0.0)
+                           (Vector3.init 5.0 0.0 0.0))
+        t11 (assert-true &t10
+          (let [res (Segment.intersect-sphere &seg1 &s1)] (Maybe.nothing? &res))
+          "Segment short of sphere misses")
+        t12 (assert-true &t11
+          (let [res (Segment.intersect-sphere &seg2 &s1)] (Maybe.just? &res))
+          "Segment through sphere hits")]
+    @&t12))

@@ -1,0 +1,120 @@
+(load "Test.carp")
+(use Test)
+(load "physics.carp")
+(use Solver)
+(use RigidBody)
+(use Transform)
+(use Body)
+(use Collision)
+(use Vector3)
+(use Handle)
+(use Quaternion)
+
+(deftest physics-test
+  (let [state (Test.State.init 0 0)]
+    (do
+      ;; 1. Simple Bounce Resolution
+      (let [rb-a (RigidBody.new (Vector3.init 0.0 0.0 0.0)
+                                (Quaternion.identity)
+                                1.0
+                                1.0
+                                0.0
+                                1.0
+                                1.0
+                                1.0)
+            _ (Body.set-velocity! (RigidBody.body &rb-a)
+                                  (Vector3.init 10.0 0.0 0.0))
+            rb-b (RigidBody.static (Vector3.init 1.0 0.0 0.0)
+                                   (Quaternion.identity)
+                                   1.0
+                                   0.0)
+            h-a (Handle.init (Uint64.from-long 0l) (Uint32.from-long 1l))
+            h-b (Handle.init (Uint64.from-long 1l) (Uint32.from-long 1l))
+            ;; Normal points from B to A: (0,0,0) - (1,0,0) = (-1,0,0)
+            cont (Contact.init 0.5
+                               (Vector3.init 0.5 0.0 0.0)
+                               (Vector3.init -1.0 0.0 0.0))
+            cs (ContactSet.init h-a h-b [cont])]
+        (do
+          (Solver.solve! &rb-a &rb-b &cs 0.016)
+          (RigidBody.step! &rb-a 0.016)
+          ;; Normal is -X. A is moving +X into B.
+          ;; rel-v = vA - vB = (10,0,0) - (0,0,0) = (10,0,0)
+          ;; dot(rel-v, normal) = 10 * -1 = -10 (Moving towards each other! Resolve!)
+          ;; New velocity should be ~ -10
+          (set! state
+                (Test.assert-true &state
+                                  (<
+                                    @(Vector3.x (Body.velocity (RigidBody.body &rb-a)))
+                                    -9.0)
+                                  "Bounce reverses velocity"))
+          ;; Positional correction: A moves along +Normal (-1, 0, 0), so X decreases.
+          (set! state
+                (Test.assert-true &state
+                                  (<
+                                    @(Vector3.x
+                                      (Transform.position (RigidBody.transform &rb-a)))
+                                    0.0)
+                                  "Positional correction pushes A back"))))
+
+      ;; 2. Angular Impulse (Off-center hit)
+      (let [rb-c (RigidBody.new (Vector3.init 0.0 0.0 0.0)
+                                (Quaternion.identity)
+                                1.0
+                                1.0
+                                0.0
+                                1.0
+                                1.0
+                                1.0)
+            _ (Body.set-velocity! (RigidBody.body &rb-c)
+                                  (Vector3.init 0.0 0.0 10.0))
+            ;; Moving +Z
+            rb-d (RigidBody.static (Vector3.init 0.0 0.0 1.0)
+                                   (Quaternion.identity)
+                                   1.0
+                                   0.0)
+            ;; Contact point is 0.5 units above center: (0, 0.5, 0.5)
+            ;; Normal is -Z
+            cont (Contact.init 0.5
+                               (Vector3.init 0.0 0.5 0.5)
+                               (Vector3.init 0.0 0.0 -1.0))
+            cs (ContactSet.init
+              (Handle.init (Uint64.from-long 0l) (Uint32.from-long 1l))
+              (Handle.init (Uint64.from-long 1l) (Uint32.from-long 1l))
+              [cont])]
+        (do
+          (Solver.solve! &rb-c &rb-d &cs 0.016)
+          ;; Hit was above center, should generate torque around X axis
+          (set! state
+                (Test.assert-true &state
+                                  (>
+                                    (abs
+                                      @(Vector3.x
+                                        (Body.angular-velocity (RigidBody.body &rb-c))))
+                                    0.1)
+                                  "Off-center hit generates angular velocity"))))
+
+      ;; 3. Static-Static Safety
+      (let [rb-s1 (RigidBody.static (Vector3.init 0.0 0.0 0.0)
+                                    (Quaternion.identity)
+                                    0.0
+                                    0.0)
+            rb-s2 (RigidBody.static (Vector3.init 0.0 0.0 0.0)
+                                    (Quaternion.identity)
+                                    0.0
+                                    0.0)
+            cont (Contact.init 0.5
+                               (Vector3.init 0.0 0.0 0.0)
+                               (Vector3.init 1.0 0.0 0.0))
+            cs (ContactSet.init
+              (Handle.init (Uint64.from-long 0l) (Uint32.from-long 1l))
+              (Handle.init (Uint64.from-long 1l) (Uint32.from-long 1l))
+              [cont])]
+        (do
+          (Solver.solve! &rb-s1 &rb-s2 &cs 0.016)
+          (set! state
+                (Test.assert-true &state
+                                  true
+                                  "Solver handles static-static without error"))))
+
+      state)))

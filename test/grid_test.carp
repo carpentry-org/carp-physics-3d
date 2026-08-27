@@ -1,0 +1,91 @@
+(load "Test.carp")
+(use Test)
+(load "grid.carp")
+(use SpatialGrid)
+
+(deftest spatial-test
+  (let [grid (SpatialGrid.new 10.0 10 10 10)
+        state (Test.State.init 0 0)]
+    (let [s1 (assert-true &state (SpatialGrid.empty? &grid) "Grid starts empty")
+          box (AABB.init (Vector3.init 5.0 5.0 5.0)
+                         (Vector3.init 15.0 15.0 15.0))
+          _ (SpatialGrid.insert! &grid &box 42)
+          res (SpatialGrid.query &grid &box)
+          s2 (assert-true &s1
+            (Array.contains? &res &42)
+            "Query finds inserted ID")
+          box2 (AABB.init (Vector3.init 50.0 50.0 50.0)
+                          (Vector3.init 60.0 60.0 60.0))
+          res2 (SpatialGrid.query &grid &box2)
+          s3 (assert-true &s2
+            (not (Array.contains? &res2 &42))
+            "Query distant box does not find ID")
+          _2 (SpatialGrid.clear! &grid)
+          res3 (SpatialGrid.query &grid &box)
+          s4 (assert-true &s3 (Array.empty? &res3) "Grid is empty after clear!")
+          ;; Test 2: Sphere Query
+          _3 (SpatialGrid.insert! &grid &box 99)
+          sphere (Sphere.init (Vector3.init 10.0 10.0 10.0) 1.0)
+          res4 (SpatialGrid.query-sphere-broadphase &grid &sphere)
+          s5 (assert-true &s4
+            (Array.contains? &res4 &99)
+            "Query sphere finds overlapping ID")
+          ;; Test 3: Remove
+          _4 (SpatialGrid.remove! &grid &box 99)
+          res5 (SpatialGrid.query &grid &box)
+          s6 (assert-true &s5
+            (not (Array.contains? &res5 &99))
+            "Remove removes ID from all buckets")
+          ;; Test 4: Ray Query
+          _5 (SpatialGrid.insert! &grid &box 123)
+          ray (create-ray &(Vector3.init -5.0 5.0 5.0)
+                          &(Vector3.init 1.0 0.0 0.0))
+          res6 (SpatialGrid.query-ray-broadphase &grid &ray 100.0)
+          s7 (assert-true &s6
+            (Array.contains? &res6 &123)
+            "Query ray finds ID along path even starting outside")
+          ;; Test 5: Unique Query
+          _6 (SpatialGrid.insert! &grid &box 123)
+          ;; Box overlaps multiple cells
+          res7 (SpatialGrid.query &grid &box)
+          res8 (SpatialGrid.query-unique &grid &box)
+          s8 (assert-true &s7
+            (>= (Array.length &res7) 1)
+            "Regular query might have duplicates")
+          s9 (assert-equal &s8
+            1
+            (Array.length &res8)
+            "Unique query has exactly 1 result for single ID")
+          ;; Test 6: Ray Edge Cases
+          _7 (SpatialGrid.clear! &grid)
+          _8 (SpatialGrid.insert! &grid &box 200)
+          ;; Ray grazing corner
+          ray2 (create-ray &(Vector3.init 0.0 0.0 0.0)
+                           &(Vector3.normalize &(Vector3.init 1.0 1.0 1.0)))
+          res9 (SpatialGrid.query-ray-broadphase &grid &ray2 100.0)
+          s10 (assert-true &s9
+            (Array.contains? &res9 &200)
+            "Ray grazing corner finds ID")
+          ;; Ray with negative direction
+          ray3 (create-ray &(Vector3.init 20.0 10.0 10.0)
+                           &(Vector3.init -1.0 0.0 0.0))
+          res10 (SpatialGrid.query-ray-broadphase &grid &ray3 100.0)
+          s11 (assert-true &s10
+            (Array.contains? &res10 &200)
+            "Negative ray finds ID")
+          ;; Ray starting exactly on boundary
+          ray4 (create-ray &(Vector3.init 10.0 10.0 10.0)
+                           &(Vector3.init 1.0 1.0 1.0))
+          res11 (SpatialGrid.query-ray-broadphase &grid &ray4 100.0)
+          s12 (assert-true &s11
+            (Array.contains? &res11 &200)
+            "Ray starting on boundary finds ID")
+          ;; Test 7: Out-of-bounds
+          box-ob (AABB.init (Vector3.init -100.0 -100.0 -100.0)
+                            (Vector3.init -90.0 -90.0 -90.0))
+          _12 (SpatialGrid.insert! &grid &box-ob 500)
+          res12 (SpatialGrid.query &grid &box-ob)
+          s13 (assert-true &s12
+            (Array.contains? &res12 &500)
+            "Out-of-bounds insert works via overflow")]
+      s13)))

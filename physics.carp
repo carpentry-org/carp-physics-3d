@@ -1,0 +1,121 @@
+(load "../carp-math/transform.carp")
+(load "dynamics.carp")
+(load "rigidbody.carp")
+(load "collision.carp")
+(load "Vector.carp")
+
+(use Vector3)
+(use Double)
+(use Transform)
+(use Body)
+(use RigidBody)
+(use Collision)
+
+(defmodule Solver
+  (doc solve!
+    "resolves a collision between two rigid bodies by applying angular and linear impulses.
+Takes two RigidBody pointers, a ContactSet manifold, and delta time (dt).")
+  (defn solve! [rb-a rb-b contact-set dt]
+    (let [t-a (RigidBody.transform rb-a)
+          b-a (RigidBody.body rb-a)
+          t-b (RigidBody.transform rb-b)
+          b-b (RigidBody.body rb-b)
+          contacts (ContactSet.contacts contact-set)
+          inv-m-a @(Body.inv-mass b-a)
+          inv-m-b @(Body.inv-mass b-b)
+          inv-i-a @(Body.inv-inertia b-a)
+          inv-i-b @(Body.inv-inertia b-b)
+          total-inv-mass (+ inv-m-a inv-m-b)]
+      (if (<= total-inv-mass 0.0)
+        ()
+        ;; Both are static/kinematic
+        (for [ci 0 (Array.length contacts)]
+          (let [contact (Array.unsafe-nth contacts ci)
+                normal (Contact.normal contact)
+                ;; Points from B to A
+                cp (Contact.point contact)
+                depth @(Contact.depth contact)
+                ;; 1. Lever arms from center of mass to contact point
+                r-a (Vector3.sub cp (Transform.position t-a))
+                r-b (Vector3.sub cp (Transform.position t-b))
+                ;; 2. Velocity at contact point (v_linear + w x r)
+                v-lin-a (Body.velocity b-a)
+                v-lin-b (Body.velocity b-b)
+                w-a (Body.angular-velocity b-a)
+                w-b (Body.angular-velocity b-b)
+                v-at-a (Vector3.add v-lin-a &(Vector3.cross w-a &r-a))
+                v-at-b (Vector3.add v-lin-b &(Vector3.cross w-b &r-b))
+                ;; 3. Relative Velocity at contact
+                rel-v (Vector3.sub &v-at-a &v-at-b)
+                vel-along-normal (Vector3.dot &rel-v normal)]
+            (do
+              ;; 4. Baumgarte Penetration Resolution Bias & Restitution
+              (let [beta 0.2
+                    slop 0.005
+                    bias (* (/ beta dt) (max 0.0 (- depth slop)))
+                    e (min @(Body.restitution b-a) @(Body.restitution b-b))
+                    target-v (if (< vel-along-normal 0.0)
+                      (* (neg vel-along-normal) e)
+                      0.0)
+                    j-num (+ (- target-v vel-along-normal) bias)
+                    r-a-cross-n (Vector3.cross &r-a normal)
+                    r-b-cross-n (Vector3.cross &r-b normal)
+                    ang-a (Vector3.dot &r-a-cross-n
+                                       &(Vector3.mul &r-a-cross-n inv-i-a))
+                    ang-b (Vector3.dot &r-b-cross-n
+                                       &(Vector3.mul &r-b-cross-n inv-i-b))
+                    j (/ j-num (+ total-inv-mass (+ ang-a ang-b)))]
+                (when (> j 0.0)
+                  (let [impulse (Vector3.mul normal j)]
+                    (do
+                      (Body.apply-impulse! b-a &impulse)
+                      (Body.apply-impulse! b-b &(Vector3.mul &impulse -1.0))
+
+                      (let [torque-a (Vector3.cross &r-a &impulse)
+                            torque-b (Vector3.cross &r-b
+                                                    &(Vector3.mul &impulse -1.0))]
+                        (do
+                          (Body.apply-angular-impulse! b-a &torque-a)
+                          (Body.apply-angular-impulse! b-b &torque-b)))
+
+                      ;; 5. Friction Impulse
+                      (let [v-at-a2 (Vector3.add (Body.velocity b-a)
+                                                 &(Vector3.cross (Body.angular-velocity b-a)
+                                                                 &r-a))
+                            v-at-b2 (Vector3.add (Body.velocity b-b)
+                                                 &(Vector3.cross (Body.angular-velocity b-b)
+                                                                 &r-b))
+                            rel-v2 (Vector3.sub &v-at-a2 &v-at-b2)
+                            v-n2 (Vector3.mul normal
+                                              (Vector3.dot &rel-v2 normal))
+                            v-tan (Vector3.sub &rel-v2 &v-n2)]
+                        (if (> (Vector3.mag-sq &v-tan) 0.0001)
+                          (let [t-norm (Vector3.normalize &v-tan)
+                                f-mu (min @(Body.friction b-a)
+                                          @(Body.friction b-b))
+                                r-a-cross-t (Vector3.cross &r-a &t-norm)
+                                r-b-cross-t (Vector3.cross &r-b &t-norm)
+                                ang-a-t (Vector3.dot &r-a-cross-t
+                                                     &(Vector3.mul &r-a-cross-t
+                                                                   inv-i-a))
+                                ang-b-t (Vector3.dot &r-b-cross-t
+                                                     &(Vector3.mul &r-b-cross-t
+                                                                   inv-i-b))
+                                jt-num (- 0.0 (Vector3.dot &rel-v2 &t-norm))
+                                jt (/ jt-num
+                                      (+ total-inv-mass (+ ang-a-t ang-b-t)))
+                                max-f (* j f-mu)
+                                jt-clamped (clamp (- 0.0 max-f) max-f jt)
+                                f-impulse (Vector3.mul &t-norm jt-clamped)]
+                            (do
+                              (Body.apply-impulse! b-a &f-impulse)
+                              (Body.apply-impulse! b-b
+                                                   &(Vector3.mul &f-impulse -1.0))
+                              (Body.apply-angular-impulse! b-a
+                                                           &(Vector3.cross &r-a
+                                                                           &f-impulse))
+                              (Body.apply-angular-impulse! b-b
+                                                           &(Vector3.cross &r-b
+                                                                           &(Vector3.mul &f-impulse
+                                                                                         -1.0)))))
+                          ())))))))))))))

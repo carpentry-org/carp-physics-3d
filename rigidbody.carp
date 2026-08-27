@@ -1,0 +1,72 @@
+(load "../carp-math/transform.carp")
+(load "dynamics.carp")
+
+(use Transform)
+(use Body)
+(use Integrator)
+
+(doc RigidBody
+  "unifies spatial state (Transform) and physical behavior (Body) into a single component.")
+(deftype RigidBody [transform Transform
+                    body Body])
+
+(defmodule RigidBody
+  (doc new "creates a dynamic RigidBody with mass and physical properties.")
+  (defn new [pos rot mass restitution friction damping ang-damping inertia]
+    (RigidBody.init
+      (Transform.init pos rot (Vector3.init 1.0 1.0 1.0))
+      (Body.new mass restitution friction damping ang-damping inertia)))
+
+  (doc static "creates an immovable RigidBody at a fixed position.")
+  (defn static [pos rot restitution friction]
+    (RigidBody.init
+      (Transform.init pos rot (Vector3.init 1.0 1.0 1.0))
+      (Body.static restitution friction)))
+
+  (doc kinematic
+    "creates a RigidBody that is moved manually but participates in collisions.")
+  (defn kinematic [pos rot restitution friction]
+    (RigidBody.init
+      (Transform.init pos rot (Vector3.init 1.0 1.0 1.0))
+      (Body.kinematic restitution friction)))
+
+  (doc step! "advances the physical simulation of the RigidBody by dt.")
+  (defn step! [rb dt]
+    (Integrator.step! (RigidBody.transform rb) (RigidBody.body rb) dt))
+
+  (doc step-custom! "advances simulation using a custom sub-step size.")
+  (defn step-custom! [rb dt sub-step]
+    (Integrator.step-custom! (RigidBody.transform rb)
+                             (RigidBody.body rb)
+                             dt
+                             sub-step))
+
+  (doc apply-force! "proxy to apply a continuous force to the underlying body.")
+  (defn apply-force! [rb f] (Body.apply-force! (RigidBody.body rb) f))
+
+  (doc apply-torque!
+    "proxy to apply a continuous torque to the underlying body.")
+  (defn apply-torque! [rb t] (Body.apply-torque! (RigidBody.body rb) t))
+
+  (doc apply-impulse!
+    "proxy to apply an instantaneous impulse to the underlying body.")
+  (defn apply-impulse! [rb impulse]
+    (Body.apply-impulse! (RigidBody.body rb) impulse))
+
+  (doc apply-angular-impulse! "proxy to apply an instantaneous angular impulse.")
+  (defn apply-angular-impulse! [rb impulse]
+    (Body.apply-angular-impulse! (RigidBody.body rb) impulse))
+
+  (doc position "returns a reference to the transform's position.")
+  (defn position [rb] (Transform.position (RigidBody.transform rb)))
+
+  (doc set-position! "sets the transform's position directly.")
+  (defn set-position! [rb pos]
+    (Transform.set-position! (RigidBody.transform rb) pos))
+
+  (doc rotation "returns a reference to the transform's rotation.")
+  (defn rotation [rb] (Transform.rotation (RigidBody.transform rb)))
+
+  (doc set-rotation! "sets the transform's rotation directly.")
+  (defn set-rotation! [rb rot]
+    (Transform.set-rotation! (RigidBody.transform rb) rot)))

@@ -1,0 +1,66 @@
+(load "Test.carp")
+(use Test)
+(load "rigidbody.carp")
+(use RigidBody)
+(use Transform)
+(use Body)
+(use Vector3)
+(use Quaternion)
+
+(deftest rigidbody-test
+  (let [state (Test.State.init 0 0)]
+    (do
+      ;; 1. Initialization
+      (let [rb (RigidBody.new (Vector3.init 1.0 2.0 3.0)
+                              (Quaternion.identity)
+                              1.0
+                              0.5
+                              0.5
+                              1.0
+                              1.0
+                              1.0)]
+        (do
+          (set! state
+                (Test.assert-equal &state
+                                   1.0
+                                   @(Vector3.x (RigidBody.position &rb))
+                                   "Position X init correctly"))
+          (set! state
+                (Test.assert-equal &state
+                                   1.0
+                                   @(Body.mass (RigidBody.body &rb))
+                                   "Mass init correctly"))))
+
+      ;; 2. Proxy Force & Step
+      (let [rb2 (RigidBody.new (Vector3.init 0.0 0.0 0.0)
+                               (Quaternion.identity)
+                               1.0
+                               0.0
+                               0.0
+                               1.0
+                               1.0
+                               1.0)]
+        (do
+          (RigidBody.apply-force! &rb2 &(Vector3.init 10.0 0.0 0.0))
+          (RigidBody.step! &rb2 0.01)
+          ;; F=10, M=1 -> A=10. V=0.1. P=0.001
+          (set! state
+                (Test.assert-true &state
+                                  (> @(Vector3.x (RigidBody.position &rb2)) 0.0)
+                                  "Proxy step moves object"))))
+
+      ;; 3. Static Body Invariant
+      (let [rb-stat (RigidBody.static (Vector3.init 0.0 0.0 0.0)
+                                      (Quaternion.identity)
+                                      0.5
+                                      0.5)]
+        (do
+          (RigidBody.apply-force! &rb-stat &(Vector3.init 100.0 0.0 0.0))
+          (RigidBody.step! &rb-stat 0.01)
+          (set! state
+                (Test.assert-equal &state
+                                   0.0
+                                   @(Vector3.x (RigidBody.position &rb-stat))
+                                   "Static proxy doesn't move"))))
+
+      state)))

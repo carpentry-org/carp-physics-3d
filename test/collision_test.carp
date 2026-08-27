@@ -1,0 +1,126 @@
+(load "Test.carp")
+(use Test)
+(load "collision.carp")
+(use Collision)
+(use CollisionChecker)
+
+(deftest collision-test
+  (let [state (Test.State.init 0 0)]
+    (let [;; 1. Standard Ball-Ball Collision
+          h1 (Handle.init (Uint64.from-long 0l) (Uint32.from-long 1l))
+          v1 (Volume.Ball (Sphere.init (Vector3.init 0.0 0.0 0.0) 1.0))
+          c1 (Collidable.init h1
+                              v1
+                              (Uint32.from-long 1l)
+                              (Uint32.from-long 1l)
+                              false)
+          h2 (Handle.init (Uint64.from-long 1l) (Uint32.from-long 1l))
+          v2 (Volume.Ball (Sphere.init (Vector3.init 1.5 0.0 0.0) 1.0))
+          c2 (Collidable.init h2
+                              v2
+                              (Uint32.from-long 1l)
+                              (Uint32.from-long 1l)
+                              false)
+          s1 (match (check-pair &c1 &c2)
+            (Maybe.Just (CollisionResult.Physical col))
+              (assert-true &state
+                (> @(Contact.depth (Collision.contact &col)) 0.0)
+                "Ball-Ball collision detected")
+            _ (assert-true &state false "Ball-Ball collision failed"))
+          ;; 2. Symmetric Filtering
+          ;; c1 mask includes c2 layer, but c2 mask DOES NOT include c1 layer
+          c-mask-test1 (Collidable.init
+            (Handle.init (Uint64.from-long 10l) (Uint32.from-long 1l))
+            (Volume.Ball (Sphere.init (Vector3.init 0.0 0.0 0.0) 1.0))
+            (Uint32.from-long 1l)
+            (Uint32.from-long 2l)
+            false)
+          ;; Layer 1, Mask 2
+          c-mask-test2 (Collidable.init
+            (Handle.init (Uint64.from-long 11l) (Uint32.from-long 1l))
+            (Volume.Ball (Sphere.init (Vector3.init 0.5 0.0 0.0) 1.0))
+            (Uint32.from-long 2l)
+            (Uint32.from-long 0l)
+            false)
+          ;; Layer 2, Mask 0
+          s2 (match (check-pair &c-mask-test1 &c-mask-test2)
+            (Maybe.Nothing)
+              (assert-true &s1
+                true
+                "Symmetric filtering blocks one-way interest")
+            _
+              (assert-true &s1
+                false
+                "Symmetric filtering failed (one-way interest allowed)"))
+          ;; 3. Trigger Support
+          c-trigger (Collidable.init
+            (Handle.init (Uint64.from-long 20l) (Uint32.from-long 1l))
+            (Volume.Ball (Sphere.init (Vector3.init 0.0 0.0 0.0) 1.0))
+            (Uint32.from-long 1l)
+            (Uint32.from-long 1l)
+            true)
+          c-solid (Collidable.init
+            (Handle.init (Uint64.from-long 21l) (Uint32.from-long 1l))
+            (Volume.Ball (Sphere.init (Vector3.init 0.5 0.0 0.0) 1.0))
+            (Uint32.from-long 1l)
+            (Uint32.from-long 1l)
+            false)
+          s3 (match (check-pair &c-trigger &c-solid)
+            (Maybe.Just (CollisionResult.Triggered t))
+              (assert-true &s2
+                (Handle.equal? (Trigger.a &t) (Collidable.handle &c-trigger))
+                "Trigger detected")
+            _ (assert-true &s2 false "Trigger failed"))
+          ;; 4. Duplicate Pair Prevention (Symmetric Flag)
+          grid (SpatialGrid.new 10.0 10 10 10)
+          entities [(copy &c1) (copy &c2)]
+          ;; Explicit copy
+          _init (do
+            (SpatialGrid.insert! &grid
+                                 &(Collision.get-aabb (Collidable.volume &c1))
+                                 (Uint64.from-long 0l))
+            (SpatialGrid.insert! &grid
+                                 &(Collision.get-aabb (Collidable.volume &c2))
+                                 (Uint64.from-long 1l)))
+          ;; Test with symmetric = false (should get A hitting B, and later B hitting A if we iterate all)
+          all-results []
+          _run1 (do
+            (query-and-check-into! &grid &c1 &entities &all-results false)
+            (query-and-check-into! &grid &c2 &entities &all-results false))
+          s4 (assert-equal &s3
+            2
+            (Array.length &all-results)
+            "Non-symmetric query returns both A-B and B-A")
+          ;; Test with symmetric = true
+          sym-results []
+          _run2 (do
+            (query-and-check-into! &grid &c1 &entities &sym-results true)
+            (query-and-check-into! &grid &c2 &entities &sym-results true))
+          s5 (assert-equal &s4
+            1
+            (Array.length &sym-results)
+            "Symmetric query returns only one pair (A-B)")
+          ;; 5. Box-Ball Collision and Normal Reversal
+          box-v (Volume.Box
+            (AABB.init (Vector3.init -1.0 -1.0 -1.0) (Vector3.init 1.0 1.0 1.0)))
+          box-c (Collidable.init
+            (Handle.init (Uint64.from-long 30l) (Uint32.from-long 1l))
+            box-v
+            (Uint32.from-long 1l)
+            (Uint32.from-long 1l)
+            false)
+          ball-v (Volume.Ball (Sphere.init (Vector3.init 1.5 0.0 0.0) 1.0))
+          ball-c (Collidable.init
+            (Handle.init (Uint64.from-long 31l) (Uint32.from-long 1l))
+            ball-v
+            (Uint32.from-long 1l)
+            (Uint32.from-long 1l)
+            false)
+          s6 (match (check-pair &box-c &ball-c)
+            (Maybe.Just (CollisionResult.Physical col))
+              (let [n (Contact.normal (Collision.contact &col))]
+                (assert-true &s5
+                  (< @(Vector3.x n) 0.0)
+                  "Box-Ball normal points from Ball to Box (reversed correctly)"))
+            _ (assert-true &s5 false "Box-Ball collision failed"))]
+      s6)))

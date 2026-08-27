@@ -1,0 +1,105 @@
+(load "Test.carp")
+(use Test)
+(load "dynamics.carp")
+(use Body)
+(use BodyType)
+(use Integrator)
+(use Transform)
+(use Vector3)
+(use Quaternion)
+
+(deftest dynamics-test
+  (let [state (Test.State.init 0 0)]
+    (do
+      ;; 1. Initialization
+      (let [b1 (Body.new 10.0 0.5 0.5 0.9 0.9 1.0)]
+        (do
+          (set! state
+                (Test.assert-equal &state
+                                   10.0
+                                   @(Body.mass &b1)
+                                   "Mass set correctly"))
+          (set! state
+                (Test.assert-equal &state
+                                   0.1
+                                   @(Body.inv-mass &b1)
+                                   "Inverse mass calculated"))
+          (set! state
+                (Test.assert-equal &state
+                                   0.9
+                                   @(Body.damping &b1)
+                                   "Damping set correctly"))
+          (set! state
+                (Test.assert-equal &state
+                                   1.0
+                                   @(Body.inv-inertia &b1)
+                                   "Inverse inertia calculated"))))
+
+      ;; 2. Integration (Velocity to Position)
+      (let [t1 (Transform.identity)
+            b2 (Body.new 1.0 0.0 0.0 1.0 1.0 1.0)]
+        (do
+          (Body.set-velocity! &b2 (Vector3.init 5.0 0.0 0.0))
+          (Integrator.step! &t1 &b2 0.01)
+          (set! state
+                (Test.assert-equal &state
+                                   0.05
+                                   @(Vector3.x (Transform.position &t1))
+                                   "Integration moves transform"))))
+
+      ;; 3. Angular Integration
+      (let [t-rot (Transform.identity)
+            b-rot (Body.new 1.0 0.0 0.0 1.0 1.0 1.0)]
+        (do
+          ;; Set angular velocity (rotating around Y axis)
+          (Body.set-angular-velocity! &b-rot
+                                      (Vector3.init 0.0 1.5707960000000001 0.0))
+          ;; Integrate for 0.1 second (max allowed before clamping)
+          (Integrator.step! &t-rot &b-rot 0.1)
+          (let [rot (Transform.rotation &t-rot)
+                euler (Quaternion.to-euler rot)]
+            (do
+              ;; Should be roughly 0.157 radians (~9 degrees)
+              (set! state
+                    (Test.assert-true &state
+                                      (or (> (abs @(Vector3.x &euler)) 0.1)
+                                          (or (> (abs @(Vector3.y &euler)) 0.1)
+                                              (> (abs @(Vector3.z &euler)) 0.1)))
+                                      "Angular integration rotates transform"))))))
+
+      ;; 4. Static Body Invariant
+      (let [t-stat (Transform.identity)
+            b-stat (Body.static 0.5 0.5)]
+        (do
+          (set! state
+                (Test.assert-equal &state
+                                   0.0
+                                   @(Body.inv-mass &b-stat)
+                                   "Static body has 0 inv-mass"))
+          (Body.apply-force! &b-stat &(Vector3.init 100.0 0.0 0.0))
+          (Integrator.step! &t-stat &b-stat 0.01)
+          (set! state
+                (Test.assert-equal &state
+                                   0.0
+                                   @(Vector3.x (Transform.position &t-stat))
+                                   "Static bodies do not move"))))
+
+      ;; 5. Sleep Support
+      (let [t-sleep (Transform.identity)
+            b-sleep (Body.new 1.0 0.0 0.0 1.0 1.0 1.0)]
+        (do
+          (Body.set-is-sleeping! &b-sleep true)
+          (Body.set-velocity! &b-sleep (Vector3.init 10.0 0.0 0.0))
+          (Integrator.step! &t-sleep &b-sleep 0.01)
+          (set! state
+                (Test.assert-equal &state
+                                   0.0
+                                   @(Vector3.x (Transform.position &t-sleep))
+                                   "Sleeping bodies skip integration"))
+          (Body.apply-force! &b-sleep &(Vector3.init 10.0 0.0 0.0))
+          (set! state
+                (Test.assert-true &state
+                                  (not @(Body.is-sleeping &b-sleep))
+                                  "Forces wake bodies up"))))
+
+      state)))

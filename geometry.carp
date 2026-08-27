@@ -1,0 +1,598 @@
+(load "Vector.carp")
+(use Vector3)
+(use Double)
+
+;; --- Core Types ---
+
+(deftype Ray
+  [origin (Vector3 Double)
+   direction (Vector3 Double)
+   ;; ALWAYS normalized
+  ])
+
+(deftype Sphere [center (Vector3 Double)
+                 radius Double])
+
+(deftype AABB [min (Vector3 Double)
+               max (Vector3 Double)])
+
+(deftype Plane
+  [normal (Vector3 Double)
+   ;; ALWAYS normalized
+   d Double])
+(defmodule Plane
+  (defn distance-to-point [plane p]
+    (+ (Vector3.dot (Plane.normal plane) p) @(Plane.d plane)))
+
+  (defn project-point [plane p]
+    (let [dist (distance-to-point plane p)]
+      (Vector3.sub p &(Vector3.mul (Plane.normal plane) dist)))))
+
+(deftype Segment [start (Vector3 Double)
+                  end (Vector3 Double)])
+
+;; A hit from a Ray or Segment
+(deftype RayHit
+  [t Double
+   ;; Distance along the ray
+   point (Vector3 Double)
+   normal (Vector3 Double)])
+
+;; A contact between two volumes
+(deftype Contact
+  [depth Double
+   ;; Penetration depth
+   point (Vector3 Double)
+   normal (Vector3 Double)
+   ;; Separation direction (towards object A)
+  ])
+
+(defmodule Contact
+  (doc reverse
+    "returns a new Contact with the normal flipped and the same depth/point.")
+  (defn reverse [c]
+    (Contact.init @(Contact.depth c)
+                  @(Contact.point c)
+                  (Vector3.mul (Contact.normal c) -1.0))))
+
+(load "../carp-math/transform.carp")
+(load "../carp-collections/handle.carp")
+(use Handle)
+
+(deftype BaseShape
+  (Ball [Double])
+  (Surface [Plane])
+  (Box [(Vector3 Double)])
+  (Cylinder [Double Double])
+  ;; radius, half-height
+  (Capsule [Double Double])
+  ;; radius, half-height
+  (Torus [Double Double])
+  ;; major_radius, minor_radius
+  (Octahedron [Double])
+  ;; size
+)
+
+(deftype LocalCrater [pos (Vector3 Double)
+                      radius Double])
+
+(deftype SDF
+  [base BaseShape
+   craters (Array LocalCrater)
+   position (Vector3 Double)
+   rotation Quaternion
+   scale Double
+   csg-nodes (Array CsgNode)])
+
+(deftype CsgNode [shape (Box SDF)
+                  op Int])
+
+(defmodule SDF
+  (sig add-crater! (Fn [(Ref SDF) LocalCrater] ()))
+  (sig add-csg-node! (Fn [(Ref SDF) CsgNode] ()))
+  (sig apply-craters (Fn [(Ref SDF) (Ref (Vector3 Double)) Double] Double))
+  (sig distance-local (Fn [(Ref SDF) (Ref (Vector3 Double))] Double))
+  (sig distance-world (Fn [(Ref SDF) (Ref (Vector3 Double))] Double))
+  (sig distance (Fn [(Ref SDF) (Ref (Vector3 Double))] Double))
+  (sig normal-local (Fn [(Ref SDF) (Ref (Vector3 Double))] (Vector3 Double)))
+  (sig normal-world (Fn [(Ref SDF) (Ref (Vector3 Double))] (Vector3 Double)))
+  (sig normal-at (Fn [(Ref SDF) (Ref (Vector3 Double))] (Vector3 Double)))
+
+  (defn init-sphere [r pos rot] (SDF.init (BaseShape.Ball r) [] pos rot 1.0 []))
+
+  (defn init-plane [pl pos rot]
+    (SDF.init (BaseShape.Surface pl) [] pos rot 1.0 []))
+
+  (defn init-box [e pos rot] (SDF.init (BaseShape.Box e) [] pos rot 1.0 []))
+
+  (defn init-cylinder [r h pos rot]
+    (SDF.init (BaseShape.Cylinder r h) [] pos rot 1.0 []))
+
+  (defn init-capsule [r h pos rot]
+    (SDF.init (BaseShape.Capsule r h) [] pos rot 1.0 []))
+
+  (defn init-torus [R r pos rot]
+    (SDF.init (BaseShape.Torus R r) [] pos rot 1.0 []))
+
+  (defn init-octahedron [s pos rot]
+    (SDF.init (BaseShape.Octahedron s) [] pos rot 1.0 []))
+
+  (defn add-crater! [sdf c] (Array.push-back! (SDF.craters sdf) c))
+
+  (defn add-csg-node! [sdf node] (Array.push-back! (SDF.csg-nodes sdf) node))
+
+  (defn apply-craters [sdf p base-d]
+    (let [craters (SDF.craters sdf)
+          d base-d]
+      (do
+        (for [i 0 (Array.length craters)]
+          (let [crater (Array.unsafe-nth craters i)
+                c-dist (-
+                  (Vector3.dist p (LocalCrater.pos crater))
+                  @(LocalCrater.radius crater))]
+            (set! d (max d (- 0.0 c-dist)))))
+        d)))
+
+  (hidden evaluate-noise)
+  (defn evaluate-noise [p]
+    (let [x @(Vector3.x p)
+          y @(Vector3.y p)
+          z @(Vector3.z p)
+          n1 (* (sin (* x 3.5)) (* (cos (* y 3.5)) (sin (* z 3.5))))
+          n2 (* (sin (+ (* x 7.0) (* n1 2.0)))
+                (* (cos (+ (* y 7.0) (* n1 2.0))) (sin (+ (* z 7.0) (* n1 2.0)))))]
+      (+ (* n1 0.12) (* n2 0.06))))
+
+  (defn distance-local [sdf p]
+    (let [scale @(SDF.scale sdf)
+          inv-scale (/ 1.0 scale)
+          local-p (Vector3.mul p inv-scale)
+          base-d (match @(SDF.base sdf)
+            (BaseShape.Ball ball-r) (- (Vector3.mag &local-p) ball-r)
+            (BaseShape.Surface surf-pl)
+              (Plane.distance-to-point &surf-pl &local-p)
+            (BaseShape.Box e)
+              (let [px (abs @(Vector3.x &local-p))
+                    py (abs @(Vector3.y &local-p))
+                    pz (abs @(Vector3.z &local-p))
+                    qx (- px @(Vector3.x &e))
+                    qy (- py @(Vector3.y &e))
+                    qz (- pz @(Vector3.z &e))
+                    max-q (max qx (max qy qz))
+                    outside (Vector3.init (max qx 0.0) (max qy 0.0) (max qz 0.0))
+                    dist-outside (Vector3.mag &outside)
+                    dist-inside (min max-q 0.0)]
+                (+ dist-outside dist-inside))
+            (BaseShape.Cylinder r h)
+              (let [rad-dist (-
+                      (sqrt
+                        (+
+                          (* @(Vector3.x &local-p) @(Vector3.x &local-p))
+                          (* @(Vector3.z &local-p) @(Vector3.z &local-p))))
+                      r)
+                    ax-dist (- (abs @(Vector3.y &local-p)) h)
+                    dx (max rad-dist 0.0)
+                    dy (max ax-dist 0.0)
+                    dist-outside (sqrt (+ (* dx dx) (* dy dy)))
+                    dist-inside (min (max rad-dist ax-dist) 0.0)]
+                (+ dist-outside dist-inside))
+            (BaseShape.Capsule r h)
+              (let [py (clamp (- 0.0 h) h @(Vector3.y &local-p))
+                    seg-pt (Vector3.init 0.0 py 0.0)]
+                (- (Vector3.dist &local-p &seg-pt) r))
+            (BaseShape.Torus rad-maj rad-min)
+              (let [qx (-
+                      (sqrt
+                        (+
+                          (* @(Vector3.x &local-p) @(Vector3.x &local-p))
+                          (* @(Vector3.z &local-p) @(Vector3.z &local-p))))
+                      rad-maj)
+                    qy @(Vector3.y &local-p)]
+                (- (sqrt (+ (* qx qx) (* qy qy))) rad-min))
+            (BaseShape.Octahedron s)
+              (*
+                (-
+                  (+ (abs @(Vector3.x &local-p))
+                     (+ (abs @(Vector3.y &local-p)) (abs @(Vector3.z &local-p))))
+                  s)
+                0.57735027000000005))
+          d (* (SDF.apply-craters sdf &local-p base-d) scale)
+          nodes (SDF.csg-nodes sdf)]
+      (do
+        (for [i 0 (Array.length nodes)]
+          (let [node (Array.unsafe-nth nodes i)
+                node-op @(CsgNode.op node)
+                child-sdf (Box.peek (CsgNode.shape node))
+                child-pos (SDF.position child-sdf)
+                diff (Vector3.sub p child-pos)
+                dist-sq (Vector3.mag-sq &diff)]
+            (if (= node-op 0)
+              (let [d-right (match @(SDF.base child-sdf)
+                      (BaseShape.Ball r) (- (sqrt dist-sq) r)
+                      _ (SDF.distance-world child-sdf p))]
+                (set! d (min d d-right)))
+              (if (= node-op 1)
+                (when (< dist-sq 9.0)
+                  (let [d-right (match @(SDF.base child-sdf)
+                          (BaseShape.Ball r) (- (sqrt dist-sq) r)
+                          _ (SDF.distance-world child-sdf p))]
+                    (set! d (max d (neg d-right)))))
+                (if (= node-op 2)
+                  (let [d-right (match @(SDF.base child-sdf)
+                          (BaseShape.Ball r) (- (sqrt dist-sq) r)
+                          _ (SDF.distance-world child-sdf p))]
+                    (set! d (max d d-right)))
+                  ())))))
+        d)))
+
+  (defn distance-world [sdf p-world]
+    (match @(SDF.base sdf)
+      (BaseShape.Surface pl) (SDF.distance-local sdf p-world)
+      _
+        (let [pos (SDF.position sdf)
+              rot (SDF.rotation sdf)
+              local-p (Quaternion.rotate &(Quaternion.inverse rot)
+                                         &(Vector3.sub p-world pos))]
+          (SDF.distance-local sdf &local-p))))
+
+  (defn distance [sdf p-world] (SDF.distance-world sdf p-world))
+
+  (defn normal-local [sdf p]
+    (let [eps 0.0001
+          eps-x (Vector3.init eps 0.0 0.0)
+          eps-y (Vector3.init 0.0 eps 0.0)
+          eps-z (Vector3.init 0.0 0.0 eps)
+          dx (-
+            (distance-local sdf &(Vector3.add p &eps-x))
+            (distance-local sdf &(Vector3.sub p &eps-x)))
+          dy (-
+            (distance-local sdf &(Vector3.add p &eps-y))
+            (distance-local sdf &(Vector3.sub p &eps-y)))
+          dz (-
+            (distance-local sdf &(Vector3.add p &eps-z))
+            (distance-local sdf &(Vector3.sub p &eps-z)))
+          grad (Vector3.init dx dy dz)]
+      (Vector3.normalize &grad)))
+
+  (defn normal-world [sdf p-world]
+    (match @(SDF.base sdf)
+      (BaseShape.Surface pl) (SDF.normal-local sdf p-world)
+      _
+        (let [pos (SDF.position sdf)
+              rot (SDF.rotation sdf)
+              local-p (Quaternion.rotate &(Quaternion.inverse rot)
+                                         &(Vector3.sub p-world pos))
+              local-n (SDF.normal-local sdf &local-p)]
+          (Quaternion.rotate rot &local-n))))
+
+  (defn normal-at [sdf p-world] (SDF.normal-world sdf p-world)))
+
+(deftype ContactSet [a (Handle ())
+                     b (Handle ())
+                     contacts (Array Contact)])
+
+(defmodule ContactSet
+  (defn new [a b contacts] (ContactSet.init a b contacts))
+
+  (defn reverse [cs]
+    (let [rev-contacts []
+          orig-contacts (ContactSet.contacts cs)]
+      (do
+        (for [i 0 (Array.length orig-contacts)]
+          (Array.push-back! &rev-contacts
+                            (Contact.reverse (Array.unsafe-nth orig-contacts i))))
+        (ContactSet.init @(ContactSet.b cs) @(ContactSet.a cs) rev-contacts)))))
+
+;; --- Module Implementation ---
+
+(defmodule Geometry
+  (def EPSILON 0.000001)
+
+  (defn create-ray [origin direction]
+    (Ray.init @origin (Vector3.normalize direction)))
+
+  (defn create-plane [p n]
+    (let [norm (Vector3.normalize n)]
+      (Plane.init norm (neg (Vector3.dot p &norm)))))
+
+  (defmodule Ray
+    (defn at [r t]
+      (Vector3.add (Ray.origin r) &(Vector3.mul (Ray.direction r) t)))
+
+    (doc intersect-sphere "Returns a RayHit if the ray intersects the sphere.")
+    (defn intersect-sphere [ray sphere]
+      (let [oc (Vector3.sub (Ray.origin ray) (Sphere.center sphere))
+            half-b (Vector3.dot &oc (Ray.direction ray))
+            c (- (Vector3.mag-sq &oc)
+                 (* @(Sphere.radius sphere) @(Sphere.radius sphere)))
+            discriminant (- (* half-b half-b) c)]
+        (if (< discriminant 0.0)
+          (Maybe.Nothing)
+          (let [sqrtd (sqrt discriminant)
+                root1 (- (neg half-b) sqrtd)
+                root2 (+ (neg half-b) sqrtd)
+                t (if (> root1 Geometry.EPSILON)
+                  root1
+                  (if (> root2 Geometry.EPSILON) root2 -1.0))]
+            (if (> t 0.0)
+              (let [p (Ray.at ray t)
+                    diff (Vector3.sub &p (Sphere.center sphere))
+                    dist (Vector3.mag &diff)
+                    n (if (< dist Geometry.EPSILON)
+                      (Vector3.init 0.0 1.0 0.0)
+                      (Vector3.normalize &diff))]
+                (Maybe.Just (RayHit.init t p n)))
+              (Maybe.Nothing))))))
+
+    (doc intersect-aabb "Returns a RayHit if the ray intersects the AABB.")
+    (defn intersect-aabb [ray aabb]
+      (let [origin (Ray.origin ray)
+            dir (Ray.direction ray)
+            amin (AABB.min aabb)
+            amax (AABB.max aabb)
+            tmin (neg Double.MAX)
+            tmax Double.MAX
+            hit-axis -1
+            hit-sign 1.0]
+        (do
+          ;; X Axis
+          (if (< (abs @(Vector3.x dir)) Geometry.EPSILON)
+            (if (or
+                (< @(Vector3.x origin) @(Vector3.x amin))
+                (> @(Vector3.x origin) @(Vector3.x amax)))
+              (set! tmax -1.0)
+              ())
+            (let [invD (/ 1.0 @(Vector3.x dir))
+                  t0 (* (- @(Vector3.x amin) @(Vector3.x origin)) invD)
+                  t1 (* (- @(Vector3.x amax) @(Vector3.x origin)) invD)
+                  near (min t0 t1)
+                  far (max t0 t1)]
+              (do
+                (when (> near (+ tmin Geometry.EPSILON))
+                  ;; Only update axis if definitively further
+                  (do
+                    (set! tmin near)
+                    (set! hit-axis 0)
+                    (set! hit-sign (if (< t0 t1) -1.0 1.0))))
+                (set! tmax (min tmax far)))))
+          ;; Y Axis
+          (if (< (abs @(Vector3.y dir)) Geometry.EPSILON)
+            (if (or
+                (< @(Vector3.y origin) @(Vector3.y amin))
+                (> @(Vector3.y origin) @(Vector3.y amax)))
+              (set! tmax -1.0)
+              ())
+            (let [invD (/ 1.0 @(Vector3.y dir))
+                  t0 (* (- @(Vector3.y amin) @(Vector3.y origin)) invD)
+                  t1 (* (- @(Vector3.y amax) @(Vector3.y origin)) invD)
+                  near (min t0 t1)
+                  far (max t0 t1)]
+              (do
+                (when (> near (+ tmin Geometry.EPSILON))
+                  (do
+                    (set! tmin near)
+                    (set! hit-axis 1)
+                    (set! hit-sign (if (< t0 t1) -1.0 1.0))))
+                (set! tmax (min tmax far)))))
+          ;; Z Axis
+          (if (< (abs @(Vector3.z dir)) Geometry.EPSILON)
+            (if (or
+                (< @(Vector3.z origin) @(Vector3.z amin))
+                (> @(Vector3.z origin) @(Vector3.z amax)))
+              (set! tmax -1.0)
+              ())
+            (let [invD (/ 1.0 @(Vector3.z dir))
+                  t0 (* (- @(Vector3.z amin) @(Vector3.z origin)) invD)
+                  t1 (* (- @(Vector3.z amax) @(Vector3.z origin)) invD)
+                  near (min t0 t1)
+                  far (max t0 t1)]
+              (do
+                (when (> near (+ tmin Geometry.EPSILON))
+                  (do
+                    (set! tmin near)
+                    (set! hit-axis 2)
+                    (set! hit-sign (if (< t0 t1) -1.0 1.0))))
+                (set! tmax (min tmax far)))))
+
+          (if (and (<= tmin tmax) (> tmax Geometry.EPSILON))
+            (let [t (max 0.0 tmin)
+                  p (Ray.at ray t)
+                  n (cond
+                    (= hit-axis 0) (Vector3.init hit-sign 0.0 0.0)
+                    (= hit-axis 1) (Vector3.init 0.0 hit-sign 0.0)
+                    (= hit-axis 2) (Vector3.init 0.0 0.0 hit-sign)
+                    (Vector3.init 0.0 0.0 0.0))]
+              (Maybe.Just (RayHit.init t p n)))
+            (Maybe.Nothing)))))
+
+    (defn fibonacci-sphere [samples]
+      (let [points []
+            phi (* 3.1415926535897931 (- 3.0 (sqrt 5.0)))]
+        (do
+          (for [i 0 samples]
+            (let [y (- 1.0
+                       (*
+                         (/ (Double.from-int i) (Double.from-int (- samples 1)))
+                         2.0))
+                  r-at-y (sqrt (max 0.0 (- 1.0 (* y y))))
+                  theta (* phi (Double.from-int i))
+                  x (* (cos theta) r-at-y)
+                  z (* (sin theta) r-at-y)]
+              (Array.push-back! &points (Vector3.init x y z))))
+          points)))
+
+    (def fibonacci-samples (fibonacci-sphere 32)))
+
+  (defmodule Sphere
+    (doc collide-sphere "Sphere-Sphere overlap. Returns Contact.")
+    (defn collide-sphere [s1 s2]
+      (let [diff (Vector3.sub (Sphere.center s1) (Sphere.center s2))
+            d2 (Vector3.mag-sq &diff)
+            sum (+ @(Sphere.radius s1) @(Sphere.radius s2))]
+        (if (<= d2 (* sum sum))
+          (let [dist (sqrt d2)
+                ;; Fallback to stable axis if centers overlap
+                norm (if (< dist Geometry.EPSILON)
+                  (Vector3.init 0.0 1.0 0.0)
+                  (Vector3.normalize &diff))
+                depth (- sum dist)
+                p (Vector3.sub (Sphere.center s1)
+                               &(Vector3.mul &norm @(Sphere.radius s1)))]
+            (Maybe.Just (Contact.init depth p norm)))
+          (Maybe.Nothing))))
+
+    (doc collide-aabb "Sphere-AABB overlap. Returns Contact.")
+    (defn collide-aabb [sphere aabb]
+      (let [center (Sphere.center sphere)
+            amin (AABB.min aabb)
+            amax (AABB.max aabb)
+            closest (Vector3.init
+              (clamp @(Vector3.x amin) @(Vector3.x amax) @(Vector3.x center))
+              (clamp @(Vector3.y amin) @(Vector3.y amax) @(Vector3.y center))
+              (clamp @(Vector3.z amin) @(Vector3.z amax) @(Vector3.z center)))
+            diff (Vector3.sub &closest center)
+            d2 (Vector3.mag-sq &diff)
+            r @(Sphere.radius sphere)]
+        (if (<= d2 (* r r))
+          (let [dist (sqrt d2)
+                ;; Norm points towards sphere
+                norm (if (< dist Geometry.EPSILON)
+                  (Vector3.init 0.0 1.0 0.0)
+                  (let [n (Vector3.normalize &diff)] (Vector3.mul &n -1.0)))
+                depth (- r dist)
+                p closest]
+            (Maybe.Just (Contact.init depth p norm)))
+          (Maybe.Nothing))))
+
+    (defn contains? [s p]
+      (let [d2 (Vector3.mag-sq &(Vector3.sub (Sphere.center s) p))]
+        (<= d2 (* @(Sphere.radius s) @(Sphere.radius s)))))
+
+    (defn collide-sdf [sphere sdf]
+      (let [center (Sphere.center sphere)
+            dist (SDF.distance sdf center)
+            r @(Sphere.radius sphere)]
+        (if (< dist r)
+          (let [depth (- r dist)
+                norm (SDF.normal-at sdf center)
+                cp (Vector3.sub center &(Vector3.mul &norm dist))]
+            (Maybe.Just (Contact.init depth cp norm)))
+          (Maybe.Nothing)))))
+
+  (defmodule AABB
+    (doc collide-aabb "AABB-AABB overlap. Returns Contact.")
+    (defn collide-aabb [a b]
+      (let [amin (AABB.min a)
+            amax (AABB.max a)
+            bmin (AABB.min b)
+            bmax (AABB.max b)
+            ox (-
+              (min @(Vector3.x amax) @(Vector3.x bmax))
+              (max @(Vector3.x amin) @(Vector3.x bmin)))
+            oy (-
+              (min @(Vector3.y amax) @(Vector3.y bmax))
+              (max @(Vector3.y amin) @(Vector3.y bmin)))
+            oz (-
+              (min @(Vector3.z amax) @(Vector3.z bmax))
+              (max @(Vector3.z amin) @(Vector3.z bmin)))]
+        (if (and (and (> ox 0.0) (> oy 0.0)) (> oz 0.0))
+          (let [depth ox
+                axis 0]
+            (do
+              (when (< oy depth) (do (set! depth oy) (set! axis 1)))
+              (when (< oz depth) (do (set! depth oz) (set! axis 2)))
+              (let [diff (Vector3.sub (AABB.min a) (AABB.min b))
+                    norm (cond
+                      (= axis 0)
+                        (Vector3.init (if (< @(Vector3.x &diff) 0.0) -1.0 1.0)
+                                      0.0
+                                      0.0)
+                      (= axis 1)
+                        (Vector3.init 0.0
+                                      (if (< @(Vector3.y &diff) 0.0) -1.0 1.0)
+                                      0.0)
+                      (Vector3.init 0.0
+                                    0.0
+                                    (if (< @(Vector3.z &diff) 0.0) -1.0 1.0)))
+                    ;; Use midpoint of overlap interval
+                    x0 (max @(Vector3.x amin) @(Vector3.x bmin))
+                    x1 (min @(Vector3.x amax) @(Vector3.x bmax))
+                    y0 (max @(Vector3.y amin) @(Vector3.y bmin))
+                    y1 (min @(Vector3.y amax) @(Vector3.y bmax))
+                    z0 (max @(Vector3.z amin) @(Vector3.z bmin))
+                    z1 (min @(Vector3.z amax) @(Vector3.z bmax))
+                    cp (Vector3.init (* (+ x0 x1) 0.5)
+                                     (* (+ y0 y1) 0.5)
+                                     (* (+ z0 z1) 0.5))]
+                (Maybe.Just (Contact.init depth cp norm)))))
+          (Maybe.Nothing))))
+
+    (defn contains? [a p]
+      (let [amin (AABB.min a)
+            amax (AABB.max a)]
+        (and
+          (and (>= @(Vector3.x p) @(Vector3.x amin))
+               (<= @(Vector3.x p) @(Vector3.x amax)))
+          (and
+            (and (>= @(Vector3.y p) @(Vector3.y amin))
+                 (<= @(Vector3.y p) @(Vector3.y amax)))
+            (and (>= @(Vector3.z p) @(Vector3.z amin))
+                 (<= @(Vector3.z p) @(Vector3.z amax))))))))
+
+  (defmodule Segment
+    (defn length [s] (Vector3.dist (Segment.start s) (Segment.end s)))
+
+    (defn direction [s]
+      (let [diff (Vector3.sub (Segment.end s) (Segment.start s))
+            dist (Vector3.mag &diff)]
+        (if (< dist Geometry.EPSILON)
+          (Vector3.init 0.0 0.0 1.0)
+          ;; Stable default for zero-length
+          (Vector3.normalize &diff))))
+
+    (defn intersect-sphere [s sphere]
+      (let [ray (Ray.init @(Segment.start s) (direction s))
+            len (length s)
+            hit-res (Ray.intersect-sphere &ray sphere)]
+        (match hit-res
+          (Maybe.Nothing) (Maybe.Nothing)
+          (Maybe.Just hit)
+            (if (<= @(RayHit.t &hit) (+ len Geometry.EPSILON))
+              (Maybe.Just hit)
+              (Maybe.Nothing)))))
+
+    (defn intersect-aabb [s aabb]
+      (let [ray (Ray.init @(Segment.start s) (direction s))
+            len (length s)
+            hit-res (Ray.intersect-aabb &ray aabb)]
+        (match hit-res
+          (Maybe.Nothing) (Maybe.Nothing)
+          (Maybe.Just hit)
+            (if (<= @(RayHit.t &hit) (+ len Geometry.EPSILON))
+              (Maybe.Just hit)
+              (Maybe.Nothing)))))
+
+    (defn intersect-sdf [s sdf]
+      (let [start (Segment.start s)
+            end (Segment.end s)
+            diff (Vector3.sub end start)
+            len (Vector3.mag &diff)
+            dir (if (< len 0.0001)
+              (Vector3.init 0.0 0.0 1.0)
+              (Vector3.normalize &diff))
+            t 0.0
+            hit? false
+            hit-pt (Vector3.init 0.0 0.0 0.0)
+            hit-norm (Vector3.init 0.0 1.0 0.0)]
+        (do
+          (for [step 0 10]
+            (when (and (not hit?) (<= t len))
+              (let [p (Vector3.add start &(Vector3.mul &dir t))
+                    d (SDF.distance-world sdf &p)]
+                (if (< d 0.001)
+                  (do
+                    (set! hit? true)
+                    (set! hit-norm (SDF.normal-world sdf &p))
+                    (set! hit-pt p))
+                  (set! t (+ t d))))))
+          (if hit? (Maybe.Just (RayHit.init t hit-pt hit-norm)) (Maybe.Nothing)))))))

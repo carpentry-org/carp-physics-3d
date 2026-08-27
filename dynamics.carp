@@ -1,0 +1,177 @@
+(load "../carp-math/transform.carp")
+(load "Vector.carp")
+
+(use Vector3)
+(use Double)
+(use Transform)
+(use Quaternion)
+
+(doc BodyType "defines how a body behaves in the simulation.")
+(deftype BodyType
+  (Dynamic [])
+  ;; Affected by forces and collisions
+  (Kinematic [])
+  ;; Moved manually, solid, NOT affected by forces
+  (Static []))
+;; Immovable, solid
+
+(doc Body "represents the Newtonian state of a physical object.")
+(deftype Body
+  [velocity (Vector3 Double)
+   angular-velocity (Vector3 Double)
+   force (Vector3 Double)
+   torque (Vector3 Double)
+   mass Double
+   inv-mass Double
+   inv-inertia Double
+   ;; Scalar simplification for launchpad
+   restitution Double
+   friction Double
+   damping Double
+   angular-damping Double
+   is-sleeping Bool
+   body-type BodyType])
+
+(defmodule Body
+  (doc new "creates a new Dynamic body. Mass must be greater than zero.")
+  (defn new [mass restitution friction damping ang-damping inertia]
+    (let [safe-mass (max mass 0.0001)
+          safe-inertia (max inertia 0.0001)
+          d (Double.clamp 0.0 1.0 damping)
+          ad (Double.clamp 0.0 1.0 ang-damping)]
+      (Body.init (Vector3.init 0.0 0.0 0.0)
+                 (Vector3.init 0.0 0.0 0.0)
+                 (Vector3.init 0.0 0.0 0.0)
+                 (Vector3.init 0.0 0.0 0.0)
+                 safe-mass
+                 (/ 1.0 safe-mass)
+                 (/ 1.0 safe-inertia)
+                 restitution
+                 friction
+                 d
+                 ad
+                 false
+                 (BodyType.Dynamic))))
+
+  (doc kinematic "creates a new Kinematic body. Not affected by forces.")
+  (defn kinematic [restitution friction]
+    (Body.init (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               0.0
+               0.0
+               0.0
+               restitution
+               friction
+               1.0
+               1.0
+               false
+               (BodyType.Kinematic)))
+
+  (doc static "creates a new Static body. Immovable.")
+  (defn static [restitution friction]
+    (Body.init (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               (Vector3.init 0.0 0.0 0.0)
+               0.0
+               0.0
+               0.0
+               restitution
+               friction
+               1.0
+               1.0
+               false
+               (BodyType.Static)))
+
+  (doc apply-force! "adds a continuous force to the body (Dynamic only).")
+  (defn apply-force! [b f]
+    (match-ref (Body.body-type b)
+      (BodyType.Dynamic)
+        (do
+          (Body.set-force! b (Vector3.add (Body.force b) f))
+          (Body.set-is-sleeping! b false))
+      _ ()))
+
+  (doc apply-torque! "adds a continuous torque to the body (Dynamic only).")
+  (defn apply-torque! [b t]
+    (match-ref (Body.body-type b)
+      (BodyType.Dynamic)
+        (do
+          (Body.set-torque! b (Vector3.add (Body.torque b) t))
+          (Body.set-is-sleeping! b false))
+      _ ()))
+
+  (doc apply-impulse! "adds an instantaneous velocity change to the body.")
+  (defn apply-impulse! [b impulse]
+    (match-ref (Body.body-type b)
+      (BodyType.Dynamic)
+        (let [dv (Vector3.mul impulse @(Body.inv-mass b))]
+          (do
+            (Body.set-velocity! b (Vector3.add (Body.velocity b) &dv))
+            (Body.set-is-sleeping! b false)))
+      _ ()))
+
+  (doc apply-angular-impulse! "adds an instantaneous angular velocity change.")
+  (defn apply-angular-impulse! [b impulse]
+    (match-ref (Body.body-type b)
+      (BodyType.Dynamic)
+        (let [dw (Vector3.mul impulse @(Body.inv-inertia b))]
+          (do
+            (Body.set-angular-velocity! b
+                                        (Vector3.add (Body.angular-velocity b)
+                                                     &dw))
+            (Body.set-is-sleeping! b false)))
+      _ ())))
+
+(defmodule Integrator
+  (defn- integrate! [t b accel ang-accel dt]
+    (let [;; 1. Linear Integration
+          damped-v (Vector3.mul (Body.velocity b) (pow @(Body.damping b) dt))
+          new-v (Vector3.add &damped-v &(Vector3.mul accel dt))
+          ;; 2. Angular Integration
+          damped-w (Vector3.mul (Body.angular-velocity b)
+                                (pow @(Body.angular-damping b) dt))
+          new-w (Vector3.add &damped-w &(Vector3.mul ang-accel dt))
+          ;; 3. State Update
+          dp (Vector3.mul &new-v dt)
+          ;; Quaternion Integration: q_new = normalize(q_old + 0.5 * w_quat * q_old * dt)
+          q-old @(Transform.rotation t)
+          w-quat (Quaternion.init @(Vector3.x &new-w)
+                                  @(Vector3.y &new-w)
+                                  @(Vector3.z &new-w)
+                                  0.0)
+          q-dot (Quaternion.mul-raw &w-quat &q-old)
+          q-new (Quaternion.normalize
+            &(Quaternion.add &q-old &(Quaternion.scale &q-dot (* 0.5 dt))))]
+      (do
+        (Body.set-velocity! b new-v)
+        (Body.set-angular-velocity! b new-w)
+        (Transform.set-position! t (Vector3.add (Transform.position t) &dp))
+        (Transform.set-rotation! t q-new))))
+
+  (doc step-custom!
+    "advances the simulation state by dt using a custom sub-step size.
+Only integrates bodies of type Dynamic that are not sleeping.")
+  (defn step-custom! [t b dt sub-step-size]
+    (match-ref (Body.body-type b)
+      (BodyType.Dynamic)
+        (if @(Body.is-sleeping b)
+          ()
+          (let-do [accum (min dt 0.1)
+                   accel (Vector3.mul (Body.force b) @(Body.inv-mass b))
+                   ang-accel (Vector3.mul (Body.torque b) @(Body.inv-inertia b))]
+            (do
+              (while (> accum 0.0)
+                (let [this-dt (min accum sub-step-size)]
+                  (do
+                    (integrate! t b &accel &ang-accel this-dt)
+                    (set! accum (- accum this-dt)))))
+              (Body.set-force! b (Vector3.init 0.0 0.0 0.0))
+              (Body.set-torque! b (Vector3.init 0.0 0.0 0.0)))))
+      _ ()))
+
+  (doc step!
+    "advances the simulation state by dt using a default 60Hz sub-step size.")
+  (defn step! [t b dt] (step-custom! t b dt 0.01666)))
