@@ -49,7 +49,7 @@ Projecting a point onto a plane (useful for shadows or sliding physics).
 ## 1. Simple Sphere-Sphere Check
 
 ```carp
-(load "carp-collision/collision.carp")
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "collision.carp")
 (use Collision)
 (use CollisionChecker)
 
@@ -71,7 +71,7 @@ Projecting a point onto a plane (useful for shadows or sliding physics).
 ## 2. Using Layers and Masks (Symmetric)
 
 ```carp
-(load "carp-collision/collision.carp")
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "collision.carp")
 (use Collision)
 (use CollisionChecker)
 
@@ -100,7 +100,7 @@ Projecting a point onto a plane (useful for shadows or sliding physics).
 ## 3. Integrating with SpatialGrid and Avoiding Duplicates
 
 ```carp
-(load "carp-collision/collision.carp")
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "collision.carp")
 (use Collision)
 (use CollisionChecker)
 (use SpatialGrid)
