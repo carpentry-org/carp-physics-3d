@@ -10,9 +10,23 @@ A consolidated Physics Library suite for the Carp programming language.
 - **[Rigidbody](#rigidbody)**: See module documentation below.
 - **[Spatial](#spatial)**: See module documentation below.
 
+## Installation
+
+```
+(load "git@github.com:carpentry-org/carp-physics-3d@master")
+```
+
+That pulls in every module. A single one can be loaded on its own:
+
+```
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "collision.carp")
+```
+
 ## Examples
 
-See [examples.md](examples.md) for module usage examples.
+See [examples.md](examples.md) for module usage examples, and the
+[API documentation](https://carpentry.dev/carp-physics-3d) for the full
+reference.
 
 ---
 
@@ -241,7 +255,7 @@ MIT
 
 A high-level physical object unification library for the [Carp](https://github.com/carp-lang/Carp) programming language.
 
-This library unifies **`carp-transform`** (where an object is) and **`carp-dynamics`** (how an object moves) into a single, cohesive **`RigidBody`** component. It eliminates the boilerplate of passing around pairs of structs and provides a unified API for the entire physics pipeline.
+This library unifies **`Transform`** (where an object is) and **`dynamics.carp`** (how an object moves) into a single, cohesive **`RigidBody`** component. It eliminates the boilerplate of passing around pairs of structs and provides a unified API for the entire physics pipeline.
 
 ## Features
 - **Unified Data**: Combines Position, Rotation, Scale, Velocity, and Force into one type.
@@ -251,7 +265,7 @@ This library unifies **`carp-transform`** (where an object is) and **`carp-dynam
 
 ## Installation
 ```clojure
-(load "https://github.com/sqrew/carp-rigidbody@master")
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "rigidbody.carp")
 ```
 
 
@@ -274,12 +288,12 @@ This library is the "Verb of Interaction" in the modular physics stack. It takes
 - **Impulse-Based Resolution**: Textbook implementation of the Sequential Impulse (SI) method for rigid body collisions.
 - **Coulomb Friction Model**: Realistic lateral resistance with correct clamping ($|j_t| \le j \cdot \mu$).
 - **Baumgarte Stabilization**: Built-in positional correction with configurable slop to prevent "sinking" and jitter.
-- **Library Agnostic**: Orchestrates data between `carp-transform`, `carp-dynamics`, and `carp-collision` without tight coupling.
+- **Library Agnostic**: Orchestrates data between `Transform`, `dynamics.carp` and `collision.carp` without tight coupling.
 - **Stability First**: Built-in guards for division-by-zero (Static vs Static) and NaN protection for tangent math.
 
 ## Installation
 ```clojure
-(load "https://github.com/sqrew/carp-physics@master")
+(load "git@github.com:carpentry-org/carp-physics-3d@master")
 ```
 
 
@@ -287,10 +301,10 @@ This library is the "Verb of Interaction" in the modular physics stack. It takes
 
 See [examples.md](examples.md) for usage examples.
 ## The Modular Stack
-`carp-physics` is designed to be the consumer of the following libraries:
-1. **`carp-transform`**: Authoritative spatial state.
-2. **`carp-dynamics`**: Newtonian integration and damping.
-3. **`carp-collision`**: Narrow-phase manifold generation.
+The solver is the consumer of the modules below it:
+1. **`Transform`** (from [carp-math](https://github.com/carpentry-org/carp-math)): authoritative spatial state.
+2. **`dynamics.carp`**: newtonian integration and damping.
+3. **`collision.carp`**: narrow-phase manifold generation.
 
 ## License
 MIT
@@ -309,11 +323,11 @@ This library provides the "nouns of motion"—managing forces, velocity, and int
 - **Semi-Implicit Euler**: Uses the standard game industry integration order (Update Velocity $\to$ Update Position) for maximum stability.
 - **Simulation Guardrails**: Built-in Delta-Time clamping to prevent simulation "explosions" during frame spikes or window dragging.
 - **Static Body Support**: First-class support for immovable objects with enforced invariants (infinite mass, zero inverse-mass).
-- **Lightweight**: Zero external dependencies beyond the standard library and `carp-transform`.
+- **Lightweight**: Zero external dependencies beyond the standard library and `Transform` from carp-math.
 
 ## Installation
 ```clojure
-(load "https://github.com/sqrew/carp-dynamics@master")
+(load "git@github.com:carpentry-org/carp-physics-3d@master" "dynamics.carp")
 ```
 
 
@@ -321,7 +335,7 @@ This library provides the "nouns of motion"—managing forces, velocity, and int
 
 See [examples.md](examples.md) for usage examples.
 ## Design Philosophy
-`carp-dynamics` follows the **Separation of Mechanisms** principle. It handles *how* objects move through space based on forces, but it does not have opinions about *why* they collide. This makes it perfectly suitable for both traditional rigid-body physics and custom SDF-based resolution systems.
+`dynamics.carp` follows the **Separation of Mechanisms** principle. It handles *how* objects move through space based on forces, but it does not have opinions about *why* they collide. This makes it perfectly suitable for both traditional rigid-body physics and custom SDF-based resolution systems.
 
 ## License
 MIT

@@ -1,0 +1,1008 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <link rel="stylesheet" href="../style.css">
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo">
+                <a href="https://github.com/carpentry-org/carp-physics-3d">
+                    <img src="">
+                </a>
+                <div class="title">
+                    carp-physics-3d
+                </div>
+                <div class="index">
+                    <ul>
+                        <li>
+                            <a href="Plane.html">
+                                Plane
+                            </a>
+                        </li>
+                        <li>
+                            <a href="Contact.html">
+                                Contact
+                            </a>
+                        </li>
+                        <li>
+                            <a href="SDF.html">
+                                SDF
+                            </a>
+                        </li>
+                        <li>
+                            <a href="ContactSet.html">
+                                ContactSet
+                            </a>
+                        </li>
+                        <li>
+                            <details>
+                                <summary>
+                                    <a href="Geometry.html">
+                                        Geometry
+                                    </a>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a href="Geometry.AABB.html">
+                                            AABB
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="Geometry.Ray.html">
+                                            Ray
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="Geometry.Segment.html">
+                                            Segment
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="Geometry.Sphere.html">
+                                            Sphere
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li>
+                            <a href="SpatialGrid.html">
+                                SpatialGrid
+                            </a>
+                        </li>
+                        <li>
+                            <a href="Collision.html">
+                                Collision
+                            </a>
+                        </li>
+                        <li>
+                            <a href="CollisionResult.html">
+                                CollisionResult
+                            </a>
+                        </li>
+                        <li>
+                            <a href="CollisionChecker.html">
+                                CollisionChecker
+                            </a>
+                        </li>
+                        <li>
+                            <a href="Body.html">
+                                Body
+                            </a>
+                        </li>
+                        <li>
+                            <a href="Integrator.html">
+                                Integrator
+                            </a>
+                        </li>
+                        <li>
+                            <a href="RigidBody.html">
+                                RigidBody
+                            </a>
+                        </li>
+                        <li>
+                            <a href="Solver.html">
+                                Solver
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="module">
+                <h1>
+                    SDF
+                </h1>
+                <div class="module-description">
+                    
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#add-crater!">
+                        <h3 id="add-crater!">
+                            add-crater!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), LocalCrater] ())
+                    </p>
+                    <pre class="args">
+                        (add-crater! sdf c)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#add-csg-node!">
+                        <h3 id="add-csg-node!">
+                            add-csg-node!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), CsgNode] ())
+                    </p>
+                    <pre class="args">
+                        (add-csg-node! sdf node)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#apply-craters">
+                        <h3 id="apply-craters">
+                            apply-craters
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b), Double] Double)
+                    </p>
+                    <pre class="args">
+                        (apply-craters sdf p base-d)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#base">
+                        <h3 id="base">
+                            base
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref BaseShape a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>base</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#copy">
+                        <h3 id="copy">
+                            copy
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>copies a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#craters">
+                        <h3 id="craters">
+                            craters
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref (Array LocalCrater) a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>craters</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#csg-nodes">
+                        <h3 id="csg-nodes">
+                            csg-nodes
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref (Array CsgNode) a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>csg-nodes</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#delete">
+                        <h3 id="delete">
+                            delete
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>deletes a <code>SDF</code>. Should usually not be called manually.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#distance">
+                        <h3 id="distance">
+                            distance
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] Double)
+                    </p>
+                    <pre class="args">
+                        (distance sdf p-world)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#distance-local">
+                        <h3 id="distance-local">
+                            distance-local
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] Double)
+                    </p>
+                    <pre class="args">
+                        (distance-local sdf p)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#distance-world">
+                        <h3 id="distance-world">
+                            distance-world
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] Double)
+                    </p>
+                    <pre class="args">
+                        (distance-world sdf p-world)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init">
+                        <h3 id="init">
+                            init
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [BaseShape, (Array LocalCrater), (Vector3 Double), Quaternion, Double, (Array CsgNode)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>creates a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-box">
+                        <h3 id="init-box">
+                            init-box
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Vector3 Double), (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-box e pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-capsule">
+                        <h3 id="init-capsule">
+                            init-capsule
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Double, Double, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-capsule r h pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-cylinder">
+                        <h3 id="init-cylinder">
+                            init-cylinder
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Double, Double, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-cylinder r h pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-octahedron">
+                        <h3 id="init-octahedron">
+                            init-octahedron
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Double, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-octahedron s pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-plane">
+                        <h3 id="init-plane">
+                            init-plane
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Plane, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-plane pl pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-sphere">
+                        <h3 id="init-sphere">
+                            init-sphere
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Double, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-sphere r pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#init-torus">
+                        <h3 id="init-torus">
+                            init-torus
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [Double, Double, (Vector3 Double), Quaternion] SDF)
+                    </p>
+                    <pre class="args">
+                        (init-torus R r pos rot)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#normal-at">
+                        <h3 id="normal-at">
+                            normal-at
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] (Vector3 Double))
+                    </p>
+                    <pre class="args">
+                        (normal-at sdf p-world)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#normal-local">
+                        <h3 id="normal-local">
+                            normal-local
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] (Vector3 Double))
+                    </p>
+                    <pre class="args">
+                        (normal-local sdf p)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#normal-world">
+                        <h3 id="normal-world">
+                            normal-world
+                        </h3>
+                    </a>
+                    <div class="description">
+                        defn
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Ref (Vector3 Double) b)] (Vector3 Double))
+                    </p>
+                    <pre class="args">
+                        (normal-world sdf p-world)
+                    </pre>
+                    <p class="doc">
+                        
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#position">
+                        <h3 id="position">
+                            position
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref (Vector3 Double) a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>position</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#prn">
+                        <h3 id="prn">
+                            prn
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>SDF</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#rotation">
+                        <h3 id="rotation">
+                            rotation
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref Quaternion a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>rotation</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#scale">
+                        <h3 id="scale">
+                            scale
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] (Ref Double a))
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>gets the <code>scale</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-base">
+                        <h3 id="set-base">
+                            set-base
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, BaseShape] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>base</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-base!">
+                        <h3 id="set-base!">
+                            set-base!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), BaseShape] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>base</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-craters">
+                        <h3 id="set-craters">
+                            set-craters
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Array LocalCrater)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>craters</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-craters!">
+                        <h3 id="set-craters!">
+                            set-craters!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Array LocalCrater)] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>craters</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-csg-nodes">
+                        <h3 id="set-csg-nodes">
+                            set-csg-nodes
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Array CsgNode)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>csg-nodes</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-csg-nodes!">
+                        <h3 id="set-csg-nodes!">
+                            set-csg-nodes!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Array CsgNode)] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>csg-nodes</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-position">
+                        <h3 id="set-position">
+                            set-position
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Vector3 Double)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>position</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-position!">
+                        <h3 id="set-position!">
+                            set-position!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), (Vector3 Double)] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>position</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-rotation">
+                        <h3 id="set-rotation">
+                            set-rotation
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, Quaternion] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>rotation</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-rotation!">
+                        <h3 id="set-rotation!">
+                            set-rotation!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), Quaternion] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>rotation</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-scale">
+                        <h3 id="set-scale">
+                            set-scale
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, Double] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>scale</code> property of a <code>SDF</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#set-scale!">
+                        <h3 id="set-scale!">
+                            set-scale!
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a), Double] ())
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>sets the <code>scale</code> property of a <code>SDF</code> in place.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#str">
+                        <h3 id="str">
+                            str
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [(Ref SDF a)] String)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>converts a <code>SDF</code> to a string.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-base">
+                        <h3 id="update-base">
+                            update-base
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [BaseShape] BaseShape a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>base</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-craters">
+                        <h3 id="update-craters">
+                            update-craters
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [(Array LocalCrater)] (Array LocalCrater) a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>craters</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-csg-nodes">
+                        <h3 id="update-csg-nodes">
+                            update-csg-nodes
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [(Array CsgNode)] (Array CsgNode) a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>csg-nodes</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-position">
+                        <h3 id="update-position">
+                            update-position
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [(Vector3 Double)] (Vector3 Double) a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>position</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-rotation">
+                        <h3 id="update-rotation">
+                            update-rotation
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [Quaternion] Quaternion a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>rotation</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+                <div class="binder">
+                    <a class="anchor" href="#update-scale">
+                        <h3 id="update-scale">
+                            update-scale
+                        </h3>
+                    </a>
+                    <div class="description">
+                        instantiate
+                    </div>
+                    <p class="sig">
+                        (Fn [SDF, (Ref (Fn [Double] Double a) b)] SDF)
+                    </p>
+                    <span>
+                        
+                    </span>
+                    <p class="doc">
+                        <p>updates the <code>scale</code> property of a <code>SDF</code> using a function <code>f</code>.</p>
+
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

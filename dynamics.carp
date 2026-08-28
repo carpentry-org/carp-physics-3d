@@ -1,4 +1,4 @@
-(load "../carp-math/transform.carp")
+(load "git@github.com:carpentry-org/carp-math@master" "transform.carp")
 (load "Vector.carp")
 
 (use Vector3)

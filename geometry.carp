@@ -55,8 +55,8 @@
                   @(Contact.point c)
                   (Vector3.mul (Contact.normal c) -1.0))))
 
-(load "../carp-math/transform.carp")
-(load "../carp-collections/handle.carp")
+(load "git@github.com:carpentry-org/carp-math@master" "transform.carp")
+(load "git@github.com:carpentry-org/carp-collections@master" "handle.carp")
 (use Handle)
 
 (deftype BaseShape
