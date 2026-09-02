@@ -1,0 +1,52 @@
+(load "carp-physics-3d.carp")
+
+(Project.config "title" "carp-physics-3d")
+(Project.config "docs-directory" "./docs/")
+(Project.config "docs-logo" "")
+(Project.config "docs-url" "https://github.com/carpentry-org/carp-physics-3d")
+(Project.config "docs-styling" "../style.css")
+(Project.config "docs-prelude" "A 3D rigid-body physics suite for Carp.
+
+```
+(load \"git@github.com:carpentry-org/carp-physics-3d@master\")
+```
+
+Transforms and quaternions come from
+[carp-math](https://github.com/carpentry-org/carp-math), and handles from
+[carp-collections](https://github.com/carpentry-org/carp-collections); both are
+pulled in for you.
+
+### Shapes
+- [`Geometry`](./Geometry.html) — shapes and their support functions, with
+  [`Plane`](./Plane.html) and [`SDF`](./SDF.html)
+- [`SpatialGrid`](./SpatialGrid.html) — uniform grid for broad-phase pruning
+
+### Collision
+- [`Collision`](./Collision.html) — narrow phase, producing
+  [`Contact`](./Contact.html)s and a [`ContactSet`](./ContactSet.html)
+- [`CollisionResult`](./CollisionResult.html),
+  [`CollisionChecker`](./CollisionChecker.html) — the result and dispatch types
+
+### Simulation
+- [`Body`](./Body.html) — mass, velocity and the state that integrates
+- [`Integrator`](./Integrator.html) — stepping that state forward
+- [`RigidBody`](./RigidBody.html) — a body with a shape and a transform
+- [`Solver`](./Solver.html) — the constraint solver that ties it together")
+
+(save-docs Plane
+           Contact
+           SDF
+           ContactSet
+           Geometry
+           SpatialGrid
+           Collision
+           CollisionResult
+           CollisionChecker
+           Body
+           Integrator
+           RigidBody
+           Solver)
+; Carp's save-docs hardcodes the index filename as <title>_index.html.
+; Rename to docs/index.html.
+(defn main []
+  (System.system "mv ./docs/carp-physics-3d_index.html ./docs/index.html"))

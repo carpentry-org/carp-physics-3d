@@ -11,3 +11,5 @@ out/
 *.swo
 .DS_Store
 *.log
+.carp-src/
+docs/

@@ -1,5 +1,5 @@
 (load "geometry.carp")
-(load "../carp-collections/handle.carp")
+(load "git@github.com:carpentry-org/carp-collections@master" "handle.carp")
 (load "grid.carp")
 (use Geometry)
 (use Handle)
